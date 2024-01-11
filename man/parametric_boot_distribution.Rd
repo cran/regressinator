@@ -7,6 +7,7 @@
 parametric_boot_distribution(
   fit,
   alternative_fit = fit,
+  data = model.frame(fit),
   fn = tidy,
   nsim = 100,
   ...
@@ -19,6 +20,10 @@ response values from.}
 \item{alternative_fit}{A model fit to data, to refit to the data sampled from
 \code{fit}. Defaults to \code{fit}, but an alternative model can be provided to
 examine its behavior when \code{fit} is the true model.}
+
+\item{data}{Data frame to be used in the simulation. Must contain the
+predictors needed for both \code{fit} and \code{alternative_fit}. Defaults to the
+predictors used in \code{fit}.}
 
 \item{fn}{Function to call on each new model fit to produce a data frame of
 estimates. Defaults to \code{broom::tidy()}, which produces a tidy data frame of
@@ -51,21 +56,48 @@ to have a specific model fit to each simulated dataset, rather than the model
 they are simulated from.
 
 Only the response variable from the \code{fit} (or \code{alternative_fit}, if given) is
-redrawn; other response variables in the population are left unchanged.
-
-Because \code{model_lineup()} uses the S3 generic methods \code{model.frame()},
+redrawn; other response variables in the population are left unchanged from
+their values in \code{data}.
+}
+\section{Model limitations}{
+Because this function uses S3 generic methods such as \code{model.frame()},
 \code{simulate()}, and \code{update()}, it can be used with any model fit for which
 methods are provided. In base R, this includes \code{lm()} and \code{glm()}.
+
+The model provided as \code{fit} must be fit using the \code{data} argument to provide
+a data frame. For example:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{fit <- lm(dist ~ speed, data = cars)
+}\if{html}{\out{</div>}}
+
+When simulating new data, this function provides the simulated data as the
+\code{data} argument and re-fits the model. If you instead refer directly to local
+variables in the model formula, this will not work. For example, if you fit a
+model this way:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{# will not work
+fit <- lm(cars$dist ~ cars$speed)
+}\if{html}{\out{</div>}}
+
+It will not be possible to refit the model using simulated datasets, as that
+would require modifying your environment to edit \code{cars}.
 }
+
 \examples{
 # Bootstrap distribution of estimates:
-fit <- lm(dist ~ speed, data = cars)
+fit <- lm(mpg ~ hp, data = mtcars)
 parametric_boot_distribution(fit, nsim = 5)
 
 # Bootstrap distribution of estimates for a quadratic model, when true
 # relationship is linear:
-quad_fit <- lm(dist ~ poly(speed, 2), data = cars)
+quad_fit <- lm(mpg ~ poly(hp, 2), data = mtcars)
 parametric_boot_distribution(fit, quad_fit, nsim = 5)
+
+# Bootstrap distribution of estimates for a model with an additional
+# predictor, when it's truly zero. data argument must be provided so
+# alternative fit has all predictors available, not just hp:
+alt_fit <- lm(mpg ~ hp + wt, data = mtcars)
+parametric_boot_distribution(fit, alt_fit, data = mtcars, nsim = 5)
 }
 \seealso{
 \code{\link[=model_lineup]{model_lineup()}} to use resampling to aid in regression diagnostics;

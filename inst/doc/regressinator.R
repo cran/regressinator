@@ -94,12 +94,18 @@ factor_slope_pop <- population(
 )
 
 ## -----------------------------------------------------------------------------
-sample_x(linear_pop, n = 10)
+linear_samp <- sample_y(sample_x(linear_pop, n = 10))
 
 ## -----------------------------------------------------------------------------
 logistic_pop |>
   sample_x(n = 10) |>
   sample_y()
+
+## -----------------------------------------------------------------------------
+fit <- lm(y ~ x1 + x2, data = linear_samp)
+
+## -----------------------------------------------------------------------------
+fit <- lm(linear_samp$y ~ linear_samp$x1 + linear_samp$x2)
 
 ## ---- fig.width=4, fig.height=4-----------------------------------------------
 library(broom)
@@ -218,7 +224,8 @@ quadratic_fit <- lm(y ~ x1 + I(x1^2) + x2, data = nonlinear_data)
 anova(nonlinear_fit, quadratic_fit)
 
 ## ---- fig.height=4------------------------------------------------------------
-quadratic_coefs <- parametric_boot_distribution(nonlinear_fit, quadratic_fit) |>
+quadratic_coefs <- parametric_boot_distribution(nonlinear_fit, quadratic_fit,
+                                                data = nonlinear_data) |>
   filter(term == "I(x1^2)")
 
 ggplot(quadratic_coefs, aes(x = estimate)) +

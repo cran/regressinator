@@ -25,6 +25,21 @@ in_interaction <- function(formula, predictor) {
   return(any(interactions))
 }
 
+#' Check whether each column in a data frame is a factor
+#'
+#' @param df Data frame to process
+#' @return Logical vector with same number of entries as columns in `df`. Each
+#'   entry is `TRUE` if the corresponding column is a factor.
+#' @keywords internal
+factor_columns <- function(df) {
+  is_factor <- function(obj) {
+    inherits(obj, c("factor", "logical", "character"))
+  }
+  factors <- unlist(lapply(df, is_factor))
+
+  return(factors)
+}
+
 #' Drop factor columns from a data frame
 #'
 #' Issues messages for the columns dropped.
@@ -34,10 +49,7 @@ in_interaction <- function(formula, predictor) {
 #' @keywords internal
 #' @importFrom cli cli_inform
 drop_factors <- function(df) {
-  is_factor <- function(obj) {
-    inherits(obj, c("factor", "logical", "character"))
-  }
-  factors <- unlist(lapply(df, is_factor))
+  factors <- factor_columns(df)
 
   if (!any(factors)) {
     return(df)
@@ -117,5 +129,37 @@ detect_transmutation <- function(formula, call = parent.frame()) {
            function(el) {
              detect_transmutation(el, call)
            })
+  }
+}
+
+#' Check that the model fit uses the data argument to provide data
+#'
+#' We simulate by passing simulated data arguments to update(). If the original
+#' fit does not use the data argument, and instead refers directly to variables
+#' in the environment, the simulations will not behave as expected. This may
+#' result in the "simulated" fits all using the original data, for instance.
+#'
+#' For example, in `lm(mtcars$mpg ~ mtcars$drat)`, simulating new data and
+#' providing it in `data =` will not change the data used for fitting.
+#'
+#' Detect a missing `data` argument and abort. It is still possible to provide
+#' `data` but also refer directly to the calling environment, but this is harder
+#' to detect.
+#'
+#' @param fit A fitted model object, whose call is to be examined
+#' @return No value. Raises an error if no `data` argument was used in `fit`.
+#'
+#' @importFrom cli cli_abort
+#' @importFrom stats getCall
+#' @keywords internal
+check_data_arg <- function(fit) {
+  call <- getCall(fit)
+
+  if (!("data" %in% names(call))) {
+    cli_abort(c("Model fit does not contain a {.arg data} argument; cannot refit with simulated data",
+                "*" = "Model call was: {.code {deparse(call)}}",
+                "i" = "Simulations work by updating {.arg data} argument and refitting",
+                ">" = "Refit model with a formula referring to columns in {.arg data}"),
+              class = "regressinator_data_arg")
   }
 }

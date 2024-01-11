@@ -7,10 +7,12 @@ test_that("model_lineup rejects invalid fn", {
 
 test_that("sampling_distribution rejects invalid fn", {
   fn <- function(fit) "duck"
-  data <- sample_x(
-    population(x = predictor("rnorm"),
-               y = response(2, error_scale = 1)),
-    n = 10)
+  data <- sample_y(
+    sample_x(
+      population(x = predictor("rnorm"),
+                 y = response(2, error_scale = 1)),
+      n = 10)
+  )
 
   expect_error(sampling_distribution(lm(y ~ x, data = data), data, fn),
                class = "regressinator_diagnostic_class")
@@ -28,6 +30,32 @@ test_that("parametric_boot_distribution produces new response data", {
     summarize(sd = sd(estimate))
 
   expect_true(all(coefs$sd > 0))
+})
+
+test_that("parametric_boot_distribution includes all columns from the data", {
+  linear_pop <- population(
+    x1 = predictor("rnorm", mean = 4, sd = 10),
+    x2 = predictor("runif", min = 0, max = 10),
+    y = response(
+      0.7 + 2.2 * x1 - 0.2 * x2,
+      family = gaussian(),
+      error_scale = 1.5
+    )
+  )
+
+  sample <- linear_pop |>
+    sample_x(n = 50) |>
+    sample_y()
+
+  # notice null_fit does not contain x2
+  fit <- lm(y ~ x1 + x2, data = sample)
+  null_fit <- lm(y ~ x1, data = sample)
+
+  # we want the simulated datasets to contain x2 so fit can be updated
+  null_dist <- parametric_boot_distribution(null_fit, fit, data = sample,
+                                            nsim = 100)
+
+  expect_equal(nrow(null_dist), 3 * 100)
 })
 
 test_that("sampling_distribution resamples x when fixed_x = FALSE", {

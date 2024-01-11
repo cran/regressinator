@@ -28,6 +28,32 @@
 #' true diagnostics among the null diagnostics: evaluating this in the R console
 #' will produce a string such as `"True data in position 5"`.
 #'
+#' # Model limitations
+#'
+#' Because this function uses S3 generic methods such as `model.frame()`,
+#' `simulate()`, and `update()`, it can be used with any model fit for which
+#' methods are provided. In base R, this includes `lm()` and `glm()`.
+#'
+#' The model provided as `fit` must be fit using the `data` argument to provide
+#' a data frame. For example:
+#'
+#' ```
+#' fit <- lm(dist ~ speed, data = cars)
+#' ```
+#'
+#' When simulating new data, this function provides the simulated data as the
+#' `data` argument and re-fits the model. If you instead refer directly to local
+#' variables in the model formula, this will not work. For example, if you fit a
+#' model this way:
+#'
+#' ```
+#' # will not work
+#' fit <- lm(cars$dist ~ cars$speed)
+#' ```
+#'
+#' It will not be possible to refit the model using simulated datasets, as that
+#' would require modifying your environment to edit `cars`.
+#'
 #' @param fit A model fit to data, such as by `lm()` or `glm()`
 #' @param fn A diagnostic function. The function's first argument should be the
 #'   fitted model, and it must return a data frame. Defaults to
@@ -126,17 +152,19 @@ NULL
 #' they are simulated from.
 #'
 #' Only the response variable from the `fit` (or `alternative_fit`, if given) is
-#' redrawn; other response variables in the population are left unchanged.
+#' redrawn; other response variables in the population are left unchanged from
+#' their values in `data`.
 #'
-#' Because `model_lineup()` uses the S3 generic methods `model.frame()`,
-#' `simulate()`, and `update()`, it can be used with any model fit for which
-#' methods are provided. In base R, this includes `lm()` and `glm()`.
+#' @inheritSection model_lineup Model limitations
 #'
 #' @param fit A model fit to data, such as by `lm()` or `glm()`, to simulate new
 #'   response values from.
 #' @param alternative_fit A model fit to data, to refit to the data sampled from
 #'   `fit`. Defaults to `fit`, but an alternative model can be provided to
 #'   examine its behavior when `fit` is the true model.
+#' @param data Data frame to be used in the simulation. Must contain the
+#'   predictors needed for both `fit` and `alternative_fit`. Defaults to the
+#'   predictors used in `fit`.
 #' @param fn Function to call on each new model fit to produce a data frame of
 #'   estimates. Defaults to `broom::tidy()`, which produces a tidy data frame of
 #'   coefficients, estimates, standard errors, and hypothesis tests.
@@ -153,23 +181,35 @@ NULL
 #' @importFrom tibble as_tibble
 #' @examples
 #' # Bootstrap distribution of estimates:
-#' fit <- lm(dist ~ speed, data = cars)
+#' fit <- lm(mpg ~ hp, data = mtcars)
 #' parametric_boot_distribution(fit, nsim = 5)
 #'
 #' # Bootstrap distribution of estimates for a quadratic model, when true
 #' # relationship is linear:
-#' quad_fit <- lm(dist ~ poly(speed, 2), data = cars)
+#' quad_fit <- lm(mpg ~ poly(hp, 2), data = mtcars)
 #' parametric_boot_distribution(fit, quad_fit, nsim = 5)
+#'
+#' # Bootstrap distribution of estimates for a model with an additional
+#' # predictor, when it's truly zero. data argument must be provided so
+#' # alternative fit has all predictors available, not just hp:
+#' alt_fit <- lm(mpg ~ hp + wt, data = mtcars)
+#' parametric_boot_distribution(fit, alt_fit, data = mtcars, nsim = 5)
 #' @export
 parametric_boot_distribution <- function(fit, alternative_fit = fit,
+                                         data = model.frame(fit),
                                          fn = tidy, nsim = 100, ...) {
   if (length(nsim) > 1 || nsim <= 0 || nsim %% 1 != 0) {
     cli_abort(c("Number of simulations must be a positive integer",
                 "x" = "Received {.arg nsim} = {.val {nsim}}"))
   }
 
+  check_data_arg(fit)
+
+  # ensure fit uses the same predictors that alternative_fit will get
+  orig_data <- data
+  fit <- update(fit, data = data)
+
   simulated_ys <- simulate(fit, nsim = nsim)
-  orig_data <- model.frame(fit)
 
   response <- response_var(alternative_fit)
 
@@ -204,9 +244,7 @@ parametric_boot_distribution <- function(fit, alternative_fit = fit,
 #' estimated coefficient and include the coefficient and its standard error; or
 #' it might contain only one row of model summary statistics.
 #'
-#' Refitting is done using the S3 generic `update()`, so this function can be
-#' used with any model fit that supports `update()`. In base R, this includes
-#' `lm()` and `glm()`, and many other model fits.
+#' @inheritSection model_lineup Model limitations
 #'
 #' @param fit A model fit to data, such as by `lm()` or `glm()`, to refit to
 #'   each sample from the population.
@@ -263,6 +301,8 @@ sampling_distribution <- function(fit, data, fn = tidy, nsim = 100,
     cli_abort(c("Number of simulations must be a positive integer",
                 "x" = "Received {.arg nsim} = {.val {nsim}}"))
   }
+
+  check_data_arg(fit)
 
   out <- fn(fit, ...)
   check_fn_output(out)
