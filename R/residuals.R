@@ -170,7 +170,8 @@ partial_residuals <- function(fit, predictors = everything()) {
   predictors <- enquo(predictors)
 
   pred_data <- get_predictors(fit)
-  selection <- eval_select(predictors, pred_data)
+  selection <- eval_select(predictors, pred_data,
+                           allow_empty = FALSE, allow_rename = FALSE)
 
   predictors <- drop_factors(pred_data[, selection, drop = FALSE])
   predictor_names <- names(predictors)
@@ -295,7 +296,8 @@ binned_residuals <- function(fit, predictors = !".fitted", breaks = NULL,
   pred_data <- get_predictors(fit)
   pred_data$.fitted <- fitted(fit)
 
-  selection <- eval_select(predictors, pred_data)
+  selection <- eval_select(predictors, pred_data,
+                           allow_empty = FALSE, allow_rename = FALSE)
 
   predictors <- drop_factors(pred_data[, selection, drop = FALSE])
   predictor_names <- names(predictors)
@@ -513,4 +515,107 @@ empirical_link <- function(response, family, na.rm = FALSE) {
   ybar <- mean(response, na.rm = na.rm)
 
   return(family$linkfun(ybar))
+}
+
+#' Augment data with randomized quantile residuals
+#'
+#' Generates a data frame containing a model's predictors, the residuals, and
+#' the randomized quantile residuals as additional columns.
+#'
+#' Randomized quantile residuals provide more interpretable residuals for
+#' generalized linear models (GLMs), such as logistic regression. See Dunn and
+#' Smyth (1996) for details, or review the examples provided in
+#' `vignette("DHARMa", package="DHARMa")`.
+#'
+#' Let \eqn{F_Y(y; x, \beta)} be the predicted cumulative distribution function
+#' for \eqn{Y} when \eqn{X = x}, using the fitted GLM. When the response is
+#' continuous, the randomized quantile residual for observation \eqn{i} is
+#'
+#' \deqn{r_{q,i} = F_Y(y_i; x_i, \hat \beta).}
+#'
+#' When the response is discrete, let
+#'
+#' \deqn{a_i = \lim_{y \uparrow y_i} F_Y(y; x_i, \hat \beta)}
+#'
+#' and
+#'
+#' \deqn{b_i = F_Y(y_i; x_i, \hat \beta),}
+#'
+#' then draw the randomized quantile residual as
+#'
+#' \deqn{r_{q,i} \sim \text{Uniform}(a_i, b_i).}{r_{q,i} ~ Uniform(a_i, b_i).}
+#'
+#' As cumulative distributions are left-continuous, this "jitters" the values
+#' between the discrete steps, resulting in a residual that is uniformly
+#' distributed when the model is correct.
+#'
+#' Some definitions of randomized quantile residuals transform the resulting
+#' values using the standard normal inverse cdf, so they are normally
+#' distributed. That step is omitted here, as uniform residuals are easy to work
+#' with.
+#'
+#' # Implementation details
+#'
+#' Uses `broom::augment()` to generate the data frame, then uses the [DHARMa
+#' package](https://cran.r-project.org/package=DHARMa) to generate randomized
+#' quantile residuals for the model.
+#'
+#' @param x Fitted model to obtain randomized quantile residuals from
+#' @param ... Additional arguments to pass to `broom::augment()`
+#' @return Data frame with one row per observation used to fit `x`, including a
+#'   `.quantile.resid` column containing the quantile residuals. See
+#'   `broom::augment()` and its methods for details of other columns.
+#'
+#' For `augment_quantile_longer()`, the output is in "long" format with one row
+#' per predictor per observation. Columns `.predictor_name` and
+#' `.predictor_value` identify the predictor and its value. An additional column
+#' `.obs` records the original observation numbers so results can be matched to
+#' observations in the original model data. See Limitations in
+#' `augment_longer()` for limitations on factor predictors.
+#' @importFrom DHARMa simulateResiduals
+#' @importFrom broom augment
+#' @references Dunn, Peter K., and Gordon K. Smyth (1996).
+#'   "Randomized Quantile Residuals." *Journal of Computational and Graphical
+#'   Statistics* 5 (3): 236–44. \doi{10.2307/1390802}
+#' @seealso `vignette("logistic-regression-diagnostics")` and
+#'   `vignette("other-glm-diagnostics")` for examples of plotting and
+#'   interpreting randomized quantile residuals; [augment_longer()];
+#'   [broom::augment()]
+#' @export
+augment_quantile <- function(x, ...) {
+  out <- augment(x, ...)
+
+  dh <- simulateResiduals(x)
+
+  out$.quantile.resid <- residuals(dh)
+
+  return(out)
+}
+
+#' @export
+#' @rdname augment_quantile
+augment_quantile_longer <- function(x, ...) {
+  # Detect and reject factor() in formulas
+  detect_transmutation(formula(x))
+
+  out <- augment_quantile(x, ...)
+  out$.obs <- rownames(out)
+  response <- response_var(x)
+
+  predictor_cols <- select(out, !starts_with(".") & !any_of(response))
+
+  factor_cols <- factor_columns(predictor_cols)
+  if (all(factor_cols)) {
+    factor_names <- NULL
+  } else {
+    # Omit factors if they're going to be combined with numerics
+    factor_names <- names(predictor_cols)[factor_cols]
+  }
+
+  pivot_longer(out,
+               cols = !starts_with(".") & !any_of(response) &
+                 !any_of(factor_names),
+               names_to = ".predictor_name",
+               values_to = ".predictor_value") |>
+    relocate(".predictor_name", ".predictor_value")
 }

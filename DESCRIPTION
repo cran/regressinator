@@ -1,8 +1,8 @@
 Package: regressinator
 Type: Package
 Title: Simulate and Diagnose (Generalized) Linear Models
-Version: 0.1.3
-Date: 2024-01-11
+Version: 0.2.0
+Date: 2024-08-16
 Authors@R: person("Alex", "Reinhart",
                   email = "areinhar@stat.cmu.edu",
                   role = c("aut", "cre"),
@@ -17,17 +17,17 @@ URL: https://www.refsmmat.com/regressinator/,
 BugReports: https://github.com/capnrefsmmat/regressinator/issues
 License: MIT + file LICENSE
 Encoding: UTF-8
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.1
 Depends: R (>= 4.1)
-Imports: broom, cli, dplyr, ggplot2, insight, nullabor, purrr, rlang,
-        tibble, tidyr, tidyselect
+Imports: broom, cli, DHARMa, dplyr, ggplot2, insight, nullabor, purrr,
+        rlang, tibble, tidyr, tidyselect
 Suggests: rmarkdown, knitr, mvtnorm, palmerpenguins, patchwork,
         testthat (>= 3.0.0)
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 NeedsCompilation: no
-Packaged: 2024-01-11 21:44:08 UTC; alexreinhart
+Packaged: 2024-08-16 15:07:24 UTC; alexreinhart
 Author: Alex Reinhart [aut, cre] (<https://orcid.org/0000-0002-6658-514X>)
 Maintainer: Alex Reinhart <areinhar@stat.cmu.edu>
 Repository: CRAN
-Date/Publication: 2024-01-11 22:20:02 UTC
+Date/Publication: 2024-08-16 15:40:02 UTC

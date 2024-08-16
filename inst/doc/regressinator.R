@@ -1,4 +1,4 @@
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
@@ -8,8 +8,8 @@ knitr::opts_chunk$set(
 library(regressinator)
 
 linear_pop <- population(
-  x1 = predictor("rnorm", mean = 4, sd = 10),
-  x2 = predictor("runif", min = 0, max = 10),
+  x1 = predictor(rnorm, mean = 4, sd = 10),
+  x2 = predictor(runif, min = 0, max = 10),
   y = response(
     0.7 + 2.2 * x1 - 0.2 * x2, # relationship between X and Y
     family = gaussian(),       # link function and response distribution
@@ -19,16 +19,16 @@ linear_pop <- population(
 
 ## -----------------------------------------------------------------------------
 logistic_pop <- population(
-  x1 = predictor("rnorm", mean = 0, sd = 10),
-  x2 = predictor("runif", min = 0, max = 10),
+  x1 = predictor(rnorm, mean = 0, sd = 10),
+  x2 = predictor(runif, min = 0, max = 10),
   y = response(0.7 + 2.2 * x1 - 0.2 * x2,
                family = binomial(link = "logit"))
 )
 
 ## -----------------------------------------------------------------------------
 heteroskedastic_pop <- population(
-  x1 = predictor("rnorm", mean = 5, sd = 4),
-  x2 = predictor("runif", min = 0, max = 10),
+  x1 = predictor(rnorm, mean = 5, sd = 4),
+  x2 = predictor(runif, min = 0, max = 10),
   y = response(
     4 + 2 * x1 - 3 * x2, # relationship between X and Y
     family = ols_with_error(rnorm), # distribution of the errors
@@ -38,8 +38,8 @@ heteroskedastic_pop <- population(
 
 ## -----------------------------------------------------------------------------
 heavy_tail_pop <- population(
-  x1 = predictor("rnorm", mean = 5, sd = 4),
-  x2 = predictor("runif", min = 0, max = 10),
+  x1 = predictor(rnorm, mean = 5, sd = 4),
+  x2 = predictor(runif, min = 0, max = 10),
   y = response(
     4 + 2 * x1 - 3 * x2, # relationship between X and Y
     family = ols_with_error(rt, df = 3), # distribution of the errors
@@ -55,7 +55,7 @@ zeroinfpois <- function(ys) {
 }
 
 pop <- population(
-  x1 = predictor("rnorm", mean = 2, sd = 2),
+  x1 = predictor(rnorm, mean = 2, sd = 2),
   y = response(
     0.7 + 0.8 * x1,
     family = custom_family(zeroinfpois, exp)
@@ -73,10 +73,10 @@ rfactor(5, c("foo", "bar", "baz"), c(0.4, 0.3, 0.3))
 intercepts <- c("foo" = 2, "bar" = 30, "baz" = 7)
 
 factor_intercept_pop <- population(
-  group = predictor("rfactor",
+  group = predictor(rfactor,
                     levels = c("foo", "bar", "baz"),
                     prob = c(0.1, 0.6, 0.3)),
-  x = predictor("runif", min = 0, max = 10),
+  x = predictor(runif, min = 0, max = 10),
   y = response(by_level(group, intercepts) + 0.3 * x,
                error_scale = 1.5)
 )
@@ -85,10 +85,10 @@ factor_intercept_pop <- population(
 slopes <- c("foo" = 2, "bar" = 30, "baz" = 7)
 
 factor_slope_pop <- population(
-  group = predictor("rfactor",
+  group = predictor(rfactor,
                     levels = c("foo", "bar", "baz"),
                     prob = c(0.1, 0.6, 0.3)),
-  x = predictor("runif", min = 0, max = 10),
+  x = predictor(runif, min = 0, max = 10),
   y = response(7 + by_level(group, slopes) * x,
                error_scale = 1.5)
 )
@@ -107,12 +107,12 @@ fit <- lm(y ~ x1 + x2, data = linear_samp)
 ## -----------------------------------------------------------------------------
 fit <- lm(linear_samp$y ~ linear_samp$x1 + linear_samp$x2)
 
-## ---- fig.width=4, fig.height=4-----------------------------------------------
+## ----fig.width=4, fig.height=4------------------------------------------------
 library(broom)
 
 nonlinear_pop <- population(
-  x1 = predictor("runif", min = 1, max = 8),
-  x2 = predictor("runif", min = 0, max = 10),
+  x1 = predictor(runif, min = 1, max = 8),
+  x2 = predictor(runif, min = 0, max = 10),
   y = response(0.7 + x1**2 - x2, family = gaussian(),
                error_scale = 4.0)
 )
@@ -133,14 +133,14 @@ ggplot(augment(nonlinear_fit),
   geom_point() +
   labs(x = "Fitted value", y = "Residual")
 
-## ---- fig.height=4------------------------------------------------------------
+## ----fig.height=4-------------------------------------------------------------
 ggplot(augment_longer(nonlinear_fit),
        aes(x = .predictor_value, y = .resid)) +
   geom_point() +
   facet_wrap(vars(.predictor_name), scales = "free") +
   labs(x = "Predictor value", y = "Residual")
 
-## ---- fig.height=4------------------------------------------------------------
+## ----fig.height=4-------------------------------------------------------------
 ggplot(partial_residuals(nonlinear_fit),
        aes(x = .predictor_value, y = .partial_resid)) +
   geom_point() + # partial residuals
@@ -160,17 +160,17 @@ ggplot(partial_residuals(quadratic_fit),
   facet_wrap(vars(.predictor_name), scales = "free") +
   labs(x = "Predictor value", y = "Partial residual")
 
-## ---- fig.width=6, fig.height=6-----------------------------------------------
+## ----fig.width=6, fig.height=6------------------------------------------------
 model_lineup(nonlinear_fit) |>
   ggplot(aes(x = .fitted, y = .resid)) +
   geom_point() +
   facet_wrap(vars(.sample)) +
   labs(x = "Fitted value", y = "Residual")
 
-## ---- fig.width=6, fig.height=6-----------------------------------------------
+## ----fig.width=6, fig.height=6------------------------------------------------
 heavy_tail_pop <- population(
-  x1 = predictor("rnorm", mean = 5, sd = 4),
-  x2 = predictor("runif", min = 0, max = 10),
+  x1 = predictor(rnorm, mean = 5, sd = 4),
+  x2 = predictor(runif, min = 0, max = 10),
   y = response(
     4 + 2 * x1 - 3 * x2,
     family = ols_with_error(rt, df = 3),
@@ -201,7 +201,7 @@ tidy(fit)
 
 sampling_distribution(fit, d, nsim = 4)
 
-## ---- fig.height=4------------------------------------------------------------
+## ----fig.height=4-------------------------------------------------------------
 samples <- sampling_distribution(fit, d, nsim = 1000)
 
 samples |>
@@ -210,7 +210,7 @@ samples |>
   facet_wrap(vars(term), scales = "free") +
   labs(x = "Estimate", y = "Frequency")
 
-## ---- message=FALSE-----------------------------------------------------------
+## ----message=FALSE------------------------------------------------------------
 library(dplyr)
 
 samples |>
@@ -223,7 +223,7 @@ quadratic_fit <- lm(y ~ x1 + I(x1^2) + x2, data = nonlinear_data)
 
 anova(nonlinear_fit, quadratic_fit)
 
-## ---- fig.height=4------------------------------------------------------------
+## ----fig.height=4-------------------------------------------------------------
 quadratic_coefs <- parametric_boot_distribution(nonlinear_fit, quadratic_fit,
                                                 data = nonlinear_data) |>
   filter(term == "I(x1^2)")

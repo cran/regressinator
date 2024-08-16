@@ -20,10 +20,7 @@ sample_x <- function(population, n) {
                 "i" = "Received {.type {population}} instead"))
   }
 
-  predictors <- Filter(
-    function(v) { inherits(v, "predictor_dist") },
-    population
-  )
+  predictors <- population_predictors(population)
 
   env <- current_env()
   sampled_data <- imap(
@@ -59,7 +56,11 @@ sample_x <- function(population, n) {
       sampled_data[[predictor]] <- NULL
 
       for (col in seq_len(ncol(pred_data))) {
-        col_name <- paste0(predictor, col)
+        col_name <- if (is.null(colnames(pred_data))) {
+          paste0(predictor, col)
+        } else {
+          paste0(predictor, colnames(pred_data)[col])
+        }
 
         sampled_data[[col_name]] <- pred_data[, col]
       }
@@ -85,8 +86,8 @@ parent_population <- function(sample) {
 #' @examples
 #' # A population with a simple linear relationship
 #' pop <- population(
-#'   x1 = predictor("rnorm", mean = 4, sd = 10),
-#'   x2 = predictor("runif", min = 0, max = 10),
+#'   x1 = predictor(rnorm, mean = 4, sd = 10),
+#'   x2 = predictor(runif, min = 0, max = 10),
 #'   y = response(0.7 + 2.2 * x1 - 0.2 * x2, error_scale = 1.0)
 #' )
 #'
@@ -102,7 +103,7 @@ parent_population <- function(sample) {
 #' @rdname sample_x
 sample_y <- function(xs) {
   if (!inherits(xs, "population_sample")) {
-    cli_abort(c("Data passed to {.fn sample_y} must be a data frame from {.fn sample_x}",
+    cli_abort(c("Data passed to {.fn sample_y} must be a data frame from {.fn sample_x} or {.fn design_x}",
                 "x" = "{.arg xs} is {.type {xs}}, but should be a {.cls population_sample}",
                 "i" = "other types do not have the necessary population attributes specifying the response distribution"))
   }

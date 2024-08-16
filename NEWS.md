@@ -1,3 +1,24 @@
+# regressinator 0.2.0
+
+- New `augment_quantile()` and `augment_quantile_longer()` functions augment
+  model training data with randomized quantile residuals.
+
+- If a `predictor()` is multivariate (it generates a matrix of multiple columns
+  when sampled from), `sample_x()` will now use the column names to set the
+  predictor names appropriately, rather than simply numbering them.
+
+- It is now recommended to provide a distribution function to `predictor()`,
+  rather than a function name as a string. (For example, use `predictor(rnorm,
+  mean = 1)` rather than `predictor("rnorm", mean = 1)`.) Using a string
+  introduces problems when the distribution function is defined in an
+  environment not on the search path when `sample_x()` needs to find it; by
+  passing a function directly, `sample_x()` will always be able to find it.
+
+- `partial_residuals()` and `binned_residuals()` now reject tidyselect syntax
+  that tries to rename predictors, or that results in no predictors being
+  selected. This syntax already caused the functions to fail with strange error
+  messages, so it is now more explicitly rejected.
+
 # regressinator 0.1.3
 
 This version fixes several bugs that arose during classroom use.

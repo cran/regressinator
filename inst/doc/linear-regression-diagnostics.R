@@ -1,4 +1,4 @@
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
@@ -11,8 +11,8 @@ library(broom)
 
 ## -----------------------------------------------------------------------------
 nonlinear_pop <- population(
-  x1 = predictor("runif", min = 1, max = 8),
-  x2 = predictor("runif", min = 4, max = 12),
+  x1 = predictor(runif, min = 1, max = 8),
+  x2 = predictor(runif, min = 4, max = 12),
   y = response(0.7 + 0.8 * x1**2 + 1.2 * x2,
                family = gaussian(), error_scale = 4.0)
 )
@@ -37,7 +37,7 @@ augment_longer(fit) |>
   facet_wrap(vars(.predictor_name), scales = "free_x") +
   labs(x = "Predictor", y = "Residual")
 
-## ---- fig.height=8------------------------------------------------------------
+## ----fig.height=8-------------------------------------------------------------
 model_lineup(fit, fn = augment_longer, n = 5) |>
   ggplot(aes(x = .predictor_value, y = .resid)) +
   geom_point() +
@@ -55,7 +55,7 @@ partial_residuals(fit) |>
   facet_wrap(vars(.predictor_name), scales = "free") +
   labs(x = "Predictor", y = "Partial residual")
 
-## ---- fig.height=8------------------------------------------------------------
+## ----fig.height=8-------------------------------------------------------------
 model_lineup(fit, partial_residuals, n = 5) |>
   ggplot(aes(x = .predictor_value, y = .partial_resid)) +
   geom_point() +
@@ -77,8 +77,8 @@ slopes <- c(
 )
 
 interact_pop <- population(
-  x1 = predictor("runif", min = 1, max = 8),
-  x2 = predictor("rfactor", levels = c("foo", "bar")),
+  x1 = predictor(runif, min = 1, max = 8),
+  x2 = predictor(rfactor, levels = c("foo", "bar")),
   y = response(by_level(x2, intercepts) + by_level(x2, slopes) * x1,
                family = gaussian(), error_scale = 4.0)
 )
@@ -122,7 +122,7 @@ augment(fit) |>
   labs(title = "Normal Q-Q plot of standardized residuals",
        x = "Theoretical quantiles", y = "Observed quantiles")
 
-## ---- fig.height=8------------------------------------------------------------
+## ----fig.height=8-------------------------------------------------------------
 model_lineup(fit) |>
   ggplot(aes(sample = .std.resid)) +
   geom_qq() +
