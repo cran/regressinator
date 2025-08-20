@@ -30,6 +30,10 @@
 #' chosen to model it with regressors. Partial residuals are not useful for
 #' categorical (factor) predictors, and so these are omitted.
 #'
+#' Besides regressors, a model may have offset terms, which enter the model with
+#' a fixed coefficient of 1. These are fixed to their mean value for partial
+#' residual calculations.
+#'
 #' # Linear models
 #'
 #' Consider a linear model where \eqn{\mathbb{E}[Y \mid X = x] = \mu(x)}{E[Y | X
@@ -53,24 +57,26 @@
 #' # Generalized linear models
 #'
 #' Consider a generalized linear model where \eqn{g(\mathbb{E}[Y \mid X = x]) =
-#' \mu(x)}{g(E[Y | X = x]) = \mu(x)}, where \eqn{g} is a link function. Let
-#' \eqn{\hat \mu}{muhat} be the fitted model and \eqn{\hat \beta_0}{beta0hat} be
-#' its intercept.
+#' \eta(x)}{g(E[Y | X = x]) = \eta(x)}, where \eqn{g} is a link function and
+#' \eqn{\eta(x)} is the linear predictor. Let \eqn{\hat \eta}{etahat} be the
+#' fitted linear predictor and \eqn{\hat \beta_0}{beta0hat} be its intercept.
+#' Let \eqn{\hat \mu(x) = g^{-1}(\hat \eta(x))}{muhat(x) = g^{-1}(etahat(x))} be
+#' the fitted mean function.
 #'
-#' Let \eqn{e_i} be the *working residual* for observation \eqn{i}, defined to
-#' be
+#' The *working residual* \eqn{e_i} for observation \eqn{i} is
 #'
-#' \deqn{e_i = (y_i - g^{-1}(x_i)) g'(x_i).}
+#' \deqn{e_i = (y_i - \hat \mu(x_i)) g'(\hat \mu(x_i)).}{e_i = (y_i -
+#' muhat(x_i)) g'(muhat(x_i)).}
 #'
 #' Choose a predictor \eqn{X_f}, the *focal* predictor, to calculate partial
-#' residuals for. Write \eqn{\mu} as \eqn{\mu(X_f, X_o)}, where \eqn{X_f} is the
+#' residuals for. Write \eqn{\eta} as \eqn{\eta(X_f, X_o)}, where \eqn{X_f} is the
 #' value of the focal predictor, and \eqn{X_o} represents all other predictors.
-#' Hence \eqn{\mu(X_f, X_o)} gives the model's prediction on the link scale.
+#' Hence \eqn{\eta(X_f, X_o)} gives the model's prediction on the link scale.
 #'
 #' The partial residual is again
 #'
-#' \deqn{r_{if} = e_i + (\hat \mu(x_{if}, 0) - \hat \beta_0).}{
-#' r_if = e_i + (muhat(x_{if}, 0) - beta0hat).}
+#' \deqn{r_{if} = e_i + (\hat \eta(x_{if}, 0) - \hat \beta_0).}{
+#' r_if = e_i + (etahat(x_{if}, 0) - beta0hat).}
 #'
 #' # Interpretation
 #'
@@ -85,12 +91,12 @@
 #' In generalized linear models, this is approximately true if the link function
 #' \eqn{g} is approximately linear over the range of observed \eqn{x} values.
 #'
-#' Additionally, the function \eqn{\mu(X_f, 0)} can be used to show the
+#' Additionally, the function \eqn{\mu(X_f, 0)} (in linear models) or
+#' \eqn{\eta(X_f, 0)} (in generalized linear models) can be used to show the
 #' relationship between the focal predictor and the response. In a linear model,
 #' the function is linear; with polynomial or spline regressors, it is
 #' nonlinear. This function is the *predictor effect function*, and the
-#' estimated predictor effects \eqn{\hat \mu(X_{if}, 0)}{muhat(X_if, 0)} are
-#' included in this function's output.
+#' estimated predictor effects are included in this function's output.
 #'
 #' # Limitations
 #'
@@ -140,7 +146,7 @@
 #' Effect Plots and Partial Residuals." *Journal of Statistical Software*,
 #' 87(9). \doi{10.18637/jss.v087.i09}
 #' @importFrom stats predict formula
-#' @importFrom insight get_predictors get_intercept
+#' @importFrom insight find_offset get_data get_predictors get_intercept
 #' @importFrom tidyselect everything eval_select
 #' @importFrom rlang enquo
 #' @importFrom purrr map_dfr
@@ -176,6 +182,13 @@ partial_residuals <- function(fit, predictors = everything()) {
   predictors <- drop_factors(pred_data[, selection, drop = FALSE])
   predictor_names <- names(predictors)
 
+  # If there is an offset, we must provide this in the prototype. Fix it at its
+  # mean value
+  offset <- find_offset(fit)
+  if (!is.null(offset)) {
+    offset_value <- mean(get_data(fit)[[offset]])
+  }
+
   intercept <- get_intercept(fit)
   if (is.na(intercept)) {
     intercept <- 0
@@ -187,6 +200,10 @@ partial_residuals <- function(fit, predictors = everything()) {
     predictor_names,
     function(predictor) {
       df <- prototype_for(pred_data, predictor)
+
+      if (!is.null(offset)) {
+        df[[offset]] <- offset_value
+      }
 
       effect <- predict(fit, newdata = df) - intercept
 
@@ -368,6 +385,7 @@ response_var <- function(formula) {
 #'   original model data.
 #' @importFrom broom augment
 #' @importFrom dplyr relocate select
+#' @importFrom insight get_data
 #' @importFrom tidyr pivot_longer starts_with any_of
 #' @seealso [partial_residuals()], [binned_residuals()]
 #' @examples
@@ -375,12 +393,18 @@ response_var <- function(formula) {
 #'
 #' # each observation appears 3 times, once per predictor:
 #' augment_longer(fit)
+#'
+#' fit <- lm(mpg ~ cyl + disp + I(disp^2) + hp, data = mtcars)
+#'
+#' # each observation still appears 3 times, as disp and disp^2 are one
+#' # predictor:
+#' augment_longer(fit)
 #' @export
 augment_longer <- function(x, ...) {
   # Detect and reject factor() in formulas
   detect_transmutation(formula(x))
 
-  out <- augment(x, ...)
+  out <- augment(x, data = get_data(x), ...)
   out$.obs <- rownames(out)
   response <- response_var(x)
 
@@ -416,9 +440,9 @@ augment_longer <- function(x, ...) {
 #' @param col Column to bin by
 #' @param breaks Number of bins to create. `bin_by_interval()` also accepts a
 #'   numeric vector of two or more unique cut points to use. If `NULL`, a
-#'   default number of breaks is chosen based on the number of rows in the data.
-#'   In `bin_by_quantile()`, if the number of unique values of the column is
-#'   smaller than `breaks`, fewer bins will be produced.
+#'   default number of breaks is chosen based on the number of non-`NA` rows in
+#'   the data. In `bin_by_quantile()`, if the number of unique values of the
+#'   column is smaller than `breaks`, fewer bins will be produced.
 #' @return Grouped data frame, similar to those returned by `dplyr::group_by()`.
 #'   An additional column `.bin` indicates the bin number for each group. Use
 #'   `dplyr::summarize()` to calculate values within each group, or other dplyr
@@ -438,14 +462,15 @@ augment_longer <- function(x, ...) {
 #' @importFrom dplyr mutate group_by
 #' @importFrom rlang .data enquo as_name
 bin_by_interval <- function(.data, col, breaks = NULL) {
-  n <- nrow(.data)
+  col <- enquo(col)
 
   if (is.null(breaks)) {
+    n <- sum(!is.na(.data[, as_name(col), drop = TRUE]))
     breaks <- size_heuristic(n)
   }
 
   mutate(.data,
-         .bin = cut({{ col }}, breaks = breaks, labels = FALSE)) |>
+         .bin = cut(!!col, breaks = breaks, labels = FALSE)) |>
     group_by(.data$.bin)
 }
 
@@ -453,7 +478,6 @@ bin_by_interval <- function(.data, col, breaks = NULL) {
 #' @importFrom ggplot2 cut_number
 #' @export
 bin_by_quantile <- function(.data, col, breaks = NULL) {
-  n <- nrow(.data)
   col <- enquo(col)
 
   # drop = TRUE is necessary because in data frames, this indexing produces a
@@ -463,6 +487,7 @@ bin_by_quantile <- function(.data, col, breaks = NULL) {
   n_unique <- length(unique(.data[, as_name(col), drop = TRUE]))
 
   if (is.null(breaks)) {
+    n <- sum(!is.na(.data[, as_name(col), drop = TRUE]))
     breaks <- size_heuristic(n)
   }
 
@@ -574,6 +599,7 @@ empirical_link <- function(response, family, na.rm = FALSE) {
 #' `augment_longer()` for limitations on factor predictors.
 #' @importFrom DHARMa simulateResiduals
 #' @importFrom broom augment
+#' @importFrom insight get_data
 #' @references Dunn, Peter K., and Gordon K. Smyth (1996).
 #'   "Randomized Quantile Residuals." *Journal of Computational and Graphical
 #'   Statistics* 5 (3): 236–44. \doi{10.2307/1390802}
@@ -582,8 +608,36 @@ empirical_link <- function(response, family, na.rm = FALSE) {
 #'   interpreting randomized quantile residuals; [augment_longer()];
 #'   [broom::augment()]
 #' @export
+#' @examples
+#' # A simple bivariate setting where the model is misspecified:
+#' logistic_pop <- population(
+#'   x1 = predictor(rnorm, mean = 0, sd = 10),
+#'   x2 = predictor(runif, min = 0, max = 10),
+#'   y = response(0.7 + 0.2 * x1 + x1^2 / 100 - 0.2 * x2,
+#'                family = binomial(link = "logit"))
+#' )
+#'
+#' logistic_data <- sample_x(logistic_pop, n = 100) |>
+#'   sample_y()
+#'
+#' # Note the true relationship with x1 is quadratic, but only a linear
+#' # model (in the log-odds) is fit:
+#' fit <- glm(y ~ x1 + x2, data = logistic_data, family = binomial)
+#'
+#' # Randomized quantile residuals:
+#' augment_quantile(fit)
+#'
+#' # In long format, they can be plotted against both predictors,
+#' # revealing a quadratic trend in x1:
+#' library(ggplot2)
+#' augment_quantile_longer(fit) |>
+#'   ggplot(aes(x = .predictor_value, y = .quantile.resid)) +
+#'   geom_point() +
+#'   geom_smooth() +
+#'   facet_wrap(vars(.predictor_name), scales = "free_x") +
+#'   labs(x = "Predictor value", y = "Randomized quantile residual")
 augment_quantile <- function(x, ...) {
-  out <- augment(x, ...)
+  out <- augment(x, data = get_data(x), ...)
 
   dh <- simulateResiduals(x)
 

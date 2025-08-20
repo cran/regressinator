@@ -39,7 +39,7 @@ library(ggplot2)
 
 # define the population relationship
 pop <- population(
-  x = predictor("runif", min = -5, max = 5),
+  x = predictor(runif, min = -5, max = 5),
   y = response(10 + 0.7 * x**2, family = gaussian(), error_scale = 2)
 )
 
@@ -55,13 +55,13 @@ fit <- lm(y ~ x, data = nonlin_sample)
 model_lineup(fit) |>
   ggplot(aes(x = x, y = .resid)) +
   geom_point() +
-  facet_wrap(~ .sample) +
+  facet_wrap(vars(.sample)) +
   labs(x = "x", y = "Residual")
 ```
 
-    ## decrypt("nsW7 Ykjk l3 gCPljlC3 Km")
+    ## decrypt("o0vr 8ZGZ D3 k5fDGD53 Yh")
 
-<img src="man/figures/README-example-regression-lineup-1.png" width="672" />
+<img src="man/figures/README-example-regression-lineup-1.png" alt="Lineup of scatterplots of residuals versus X" width="672" />
 
 If you can identify the “true” residual plot from the lineup, you have
 found model misspecification. This lineup is essentially a visual
@@ -84,18 +84,18 @@ fit |>
     ## # A tibble: 12 × 6
     ##    term        estimate std.error statistic  p.value .sample
     ##    <chr>          <dbl>     <dbl>     <dbl>    <dbl>   <dbl>
-    ##  1 (Intercept)   13.0       1.19     10.9   2.32e- 9       0
-    ##  2 x             -0.229     0.498    -0.460 6.51e- 1       0
-    ##  3 (Intercept)   13.7       1.04     13.1   1.21e-10       1
-    ##  4 x             -0.400     0.435    -0.918 3.71e- 1       1
-    ##  5 (Intercept)   13.3       1.17     11.4   1.19e- 9       2
-    ##  6 x             -0.376     0.489    -0.768 4.52e- 1       2
-    ##  7 (Intercept)   13.7       1.17     11.7   7.34e-10       3
-    ##  8 x             -0.628     0.490    -1.28  2.16e- 1       3
-    ##  9 (Intercept)   13.6       1.23     11.1   1.68e- 9       4
-    ## 10 x             -0.564     0.512    -1.10  2.85e- 1       4
-    ## 11 (Intercept)   13.9       1.48      9.42  2.23e- 8       5
-    ## 12 x             -0.227     0.618    -0.367 7.18e- 1       5
+    ##  1 (Intercept)  15.7        0.991   15.9    4.98e-12       0
+    ##  2 x             0.164      0.330    0.496  6.26e- 1       0
+    ##  3 (Intercept)  16.4        1.01    16.3    3.24e-12       1
+    ##  4 x             0.0746     0.335    0.223  8.26e- 1       1
+    ##  5 (Intercept)  16.7        1.22    13.7    5.71e-11       2
+    ##  6 x             0.0977     0.405    0.241  8.12e- 1       2
+    ##  7 (Intercept)  17.3        1.30    13.3    9.86e-11       3
+    ##  8 x             0.0796     0.433    0.184  8.56e- 1       3
+    ##  9 (Intercept)  15.4        0.956   16.1    3.92e-12       4
+    ## 10 x            -0.0483     0.318   -0.152  8.81e- 1       4
+    ## 11 (Intercept)  15.6        1.18    13.3    9.70e-11       5
+    ## 12 x            -0.0155     0.391   -0.0397 9.69e- 1       5
 
 Here `sampling_distribution()` defaults to using `broom::tidy()` to
 obtain the coefficients and standard errors for each fit. We could use

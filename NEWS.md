@@ -1,3 +1,29 @@
+# regressinator 0.3.0
+
+- `augment_longer()` and `augment_quantile_longer()` now give one row per
+  *predictor* per observation, rather than one row per *regressor.* Their
+  documentation is also corrected to be consistent. This change facilitates
+  plotting residuals against each predictor, which is more interpretable than
+  having plots of residuals against multiple regressors derived from the same
+  predictor (e.g., against a variable and its square).
+
+- The documentation for `partial_residuals()` now gives the correct definition
+  of partial residuals for GLMs. (The code gave the correct output already, but
+  the stated definition was incorrect.)
+
+- `parametric_boot_distribution()`, and by extension `model_lineup()`, now
+  supports models fit with transformations. Previously, using transformations
+  like `I(x^2)` in model formulas (or using `ns()` or other functions that
+  transform predictors into matrix columns) would cause the model refitting to
+  fail.
+
+- `partial_residuals()` now works correctly for models fit with offsets, by
+  fixing the offset to its mean value.
+
+- `bin_by_interval()` and `bin_by_quantile()` now base their default number of
+  bins on the number of non-`NA` observations of the variable to be binned,
+  rather than the total number of rows.
+
 # regressinator 0.2.0
 
 - New `augment_quantile()` and `augment_quantile_longer()` functions augment

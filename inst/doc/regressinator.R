@@ -107,7 +107,7 @@ fit <- lm(y ~ x1 + x2, data = linear_samp)
 ## -----------------------------------------------------------------------------
 fit <- lm(linear_samp$y ~ linear_samp$x1 + linear_samp$x2)
 
-## ----fig.width=4, fig.height=4------------------------------------------------
+## ----simple-residuals---------------------------------------------------------
 library(broom)
 
 nonlinear_pop <- population(
@@ -133,14 +133,14 @@ ggplot(augment(nonlinear_fit),
   geom_point() +
   labs(x = "Fitted value", y = "Residual")
 
-## ----fig.height=4-------------------------------------------------------------
+## ----simple-separate-resids---------------------------------------------------
 ggplot(augment_longer(nonlinear_fit),
        aes(x = .predictor_value, y = .resid)) +
   geom_point() +
   facet_wrap(vars(.predictor_name), scales = "free") +
   labs(x = "Predictor value", y = "Residual")
 
-## ----fig.height=4-------------------------------------------------------------
+## ----simple-partial-resids----------------------------------------------------
 ggplot(partial_residuals(nonlinear_fit),
        aes(x = .predictor_value, y = .partial_resid)) +
   geom_point() + # partial residuals
@@ -149,7 +149,7 @@ ggplot(partial_residuals(nonlinear_fit),
   facet_wrap(vars(.predictor_name), scales = "free") +
   labs(x = "Predictor value", y = "Partial residual")
 
-## ----fig.height=4-------------------------------------------------------------
+## ----simple-partial-quadratic-------------------------------------------------
 quadratic_fit <- lm(y ~ poly(x1, 2) + x2, data = nonlinear_data)
 
 ggplot(partial_residuals(quadratic_fit),
@@ -160,14 +160,14 @@ ggplot(partial_residuals(quadratic_fit),
   facet_wrap(vars(.predictor_name), scales = "free") +
   labs(x = "Predictor value", y = "Partial residual")
 
-## ----fig.width=6, fig.height=6------------------------------------------------
+## ----simple-lineup------------------------------------------------------------
 model_lineup(nonlinear_fit) |>
   ggplot(aes(x = .fitted, y = .resid)) +
   geom_point() +
   facet_wrap(vars(.sample)) +
   labs(x = "Fitted value", y = "Residual")
 
-## ----fig.width=6, fig.height=6------------------------------------------------
+## ----qq-lineup----------------------------------------------------------------
 heavy_tail_pop <- population(
   x1 = predictor(rnorm, mean = 5, sd = 4),
   x2 = predictor(runif, min = 0, max = 10),
@@ -201,7 +201,7 @@ tidy(fit)
 
 sampling_distribution(fit, d, nsim = 4)
 
-## ----fig.height=4-------------------------------------------------------------
+## ----sampling-hists-----------------------------------------------------------
 samples <- sampling_distribution(fit, d, nsim = 1000)
 
 samples |>
@@ -223,7 +223,7 @@ quadratic_fit <- lm(y ~ x1 + I(x1^2) + x2, data = nonlinear_data)
 
 anova(nonlinear_fit, quadratic_fit)
 
-## ----fig.height=4-------------------------------------------------------------
+## ----null-hist----------------------------------------------------------------
 quadratic_coefs <- parametric_boot_distribution(nonlinear_fit, quadratic_fit,
                                                 data = nonlinear_data) |>
   filter(term == "I(x1^2)")
